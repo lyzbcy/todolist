@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 database.sqlite
+database/daily_recitation_history.csv
+database/daily_recitation_database.legacy.csv
 
 # Editor directories and files
 .vscode/*

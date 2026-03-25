@@ -4,6 +4,16 @@ import sqlite3 from 'sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { addDays, isSameDay, startOfWeek } from 'date-fns';
+import {
+    applyReviewAction,
+    buildRecitationPlan,
+    getRecitationStats,
+    loadRecitationRecords,
+    saveRecitationRecords,
+    appendReviewLog,
+    MAX_MASTERY_LEVEL,
+    toDateKey,
+} from './recitationStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,6 +50,10 @@ function buildWeekRange(baseDate) {
         weekEnd: addDays(weekStart, 6),
         dates,
     };
+}
+
+function dateKeyToDate(dateKey) {
+    return new Date(`${dateKey}T12:00:00`);
 }
 
 function ensureColumn(table, column, definition) {
@@ -332,6 +346,117 @@ app.get('/api/stats', (req, res) => {
             });
         });
     });
+});
+
+app.get('/api/recitation/plan', async (req, res) => {
+    try {
+        const targetDateKey = toDateKey(req.query.date || new Date(), toDateKey(new Date()));
+        const targetDate = dateKeyToDate(targetDateKey);
+
+        const records = await loadRecitationRecords();
+        const plan = buildRecitationPlan(records, targetDate);
+        const stats = await getRecitationStats(records, targetDate);
+
+        res.json({
+            ...plan,
+            stats,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/recitation/stats', async (req, res) => {
+    try {
+        const targetDateKey = toDateKey(req.query.date || new Date(), toDateKey(new Date()));
+        const targetDate = dateKeyToDate(targetDateKey);
+
+        const records = await loadRecitationRecords();
+        const stats = await getRecitationStats(records, targetDate);
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/recitation/items', async (req, res) => {
+    try {
+        const records = await loadRecitationRecords();
+        const todayKey = toDateKey(req.body.due_date || new Date(), toDateKey(new Date()));
+        const nextId = records.length ? Math.max(...records.map((item) => item.id)) + 1 : 1;
+        const item = {
+            id: nextId,
+            content: String(req.body.content || '').trim(),
+            meaning: String(req.body.meaning || '').trim(),
+            mastery_level: Math.max(0, Math.min(MAX_MASTERY_LEVEL, Number.parseInt(req.body.mastery_level ?? '0', 10) || 0)),
+            due_date: todayKey,
+            last_review_date: String(req.body.last_review_date || ''),
+            review_count: Math.max(0, Number.parseInt(req.body.review_count ?? '0', 10) || 0),
+            category: String(req.body.category || ''),
+            notes: String(req.body.notes || ''),
+        };
+
+        if (!item.content) {
+            return res.status(400).json({ error: 'content is required' });
+        }
+
+        if (req.body.due_date) {
+            item.due_date = toDateKey(req.body.due_date, todayKey);
+        }
+
+        records.push(item);
+        await saveRecitationRecords(records);
+        res.json({ item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/recitation/items/:id', async (req, res) => {
+    try {
+        const id = Number.parseInt(req.params.id, 10);
+        const records = await loadRecitationRecords();
+        const index = records.findIndex((item) => item.id === id);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        const current = records[index];
+        const action = String(req.body.action || 'good');
+        const manual = req.body.manual || {};
+        const todayKey = toDateKey(req.body.date || new Date(), toDateKey(new Date()));
+        const today = dateKeyToDate(todayKey);
+        const updated = applyReviewAction(current, action, today, manual);
+
+        records[index] = {
+            ...current,
+            ...updated,
+            content: current.content,
+            meaning: current.meaning,
+            category: current.category,
+        };
+
+        if (action !== 'later' && action !== 'skip' && action !== 'manual') {
+            await appendReviewLog({
+                id: current.id,
+                content: current.content,
+                action,
+                mastery_before: current.mastery_level,
+                mastery_after: records[index].mastery_level,
+                due_before: current.due_date,
+                due_after: records[index].due_date,
+            });
+        }
+
+        await saveRecitationRecords(records);
+        const stats = await getRecitationStats(records, today);
+        res.json({
+            item: records[index],
+            stats,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.listen(PORT, () => {

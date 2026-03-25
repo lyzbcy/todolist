@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, Brain, ListTodo, Sparkles } from 'lucide-react';
+import { BarChart3, BookOpen, Brain, ListTodo, Sparkles } from 'lucide-react';
 import { TodoList } from './components/TodoList';
 import { MemoryList } from './components/MemoryList';
+import { RecitationPage } from './components/RecitationPage';
 import { StatsPanel } from './components/StatsPanel';
 
 const Motion = motion;
@@ -82,6 +83,7 @@ function App() {
   const tabs = [
     { key: 'todo', label: '任务', icon: ListTodo, color: '#4f8cff' },
     { key: 'memory', label: '记忆池', icon: Brain, color: '#a855f7' },
+    { key: 'recitation', label: '背诵', icon: BookOpen, color: '#f59e0b' },
     { key: 'stats', label: '数据', icon: BarChart3, color: '#34d399' },
   ];
 
@@ -142,9 +144,10 @@ function App() {
               background: 'rgba(255,255,255,0.04)',
               borderRadius: 14,
               border: '1px solid rgba(255,255,255,0.06)',
+              overflowX: 'auto',
             }}
           >
-            {tabs.map(tab => {
+            {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
               return (
@@ -190,35 +193,22 @@ function App() {
 
         <AnimatePresence mode="wait">
           {activeTab === 'todo' && (
-            <motion.div
-              key="todo"
-              initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
-              transition={{ duration: 0.35 }}
-            >
+            <motion.div key="todo" initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }} transition={{ duration: 0.35 }}>
               <TodoList />
             </motion.div>
           )}
           {activeTab === 'memory' && (
-            <motion.div
-              key="memory"
-              initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
-              transition={{ duration: 0.35 }}
-            >
+            <motion.div key="memory" initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }} transition={{ duration: 0.35 }}>
               <MemoryList />
             </motion.div>
           )}
+          {activeTab === 'recitation' && (
+            <motion.div key="recitation" initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }} transition={{ duration: 0.35 }}>
+              <RecitationPage currentDate={currentTime} />
+            </motion.div>
+          )}
           {activeTab === 'stats' && (
-            <motion.div
-              key="stats"
-              initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
-              transition={{ duration: 0.35 }}
-            >
+            <motion.div key="stats" initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }} transition={{ duration: 0.35 }}>
               <StatsPanel currentDate={currentTime} />
             </motion.div>
           )}
